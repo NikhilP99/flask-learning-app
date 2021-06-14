@@ -1,3 +1,4 @@
+import flask
 from app import app,db
 from flask import json, render_template, request, Response, flash, redirect
 from app.models import User, Course, Enrollment
@@ -20,14 +21,18 @@ def login():
 
     return render_template("login.html", title="Login", form=form , login=True)
 
+@app.route("/register",methods=["GET","POST"])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        flash("Registration succesful!","success")
+        return redirect('/login')
+    return render_template("register.html",title="Register", form=form ,register=True)
+
 @app.route("/courses/")
 @app.route("/courses/<term>")
 def courses(term="Spring 2019"):
     return render_template("courses.html", courseData=courseData, courses=True, term=term)
-
-@app.route("/register")
-def register():
-    return render_template("register.html", register=True)
 
 @app.route("/enrollment",methods=["GET","POST"])
 def enrollment():
