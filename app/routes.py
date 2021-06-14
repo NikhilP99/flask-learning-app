@@ -60,17 +60,58 @@ def courses(term = None):
 
 @app.route("/enrollment",methods=["GET","POST"])
 def enrollment():
-    id = request.form.get('courseID')
-    title = request.form.get('title')
-    term = request.form.get('term')
+    courseID = request.form.get('courseID')
+    courseTitle = request.form.get('title')
+    user_id = 1
 
-    data = {
-        "id": id,
-        "title": title,
-        "term": term,
-    }
+    print(courseID)
 
-    return render_template("enrollment.html", enrollment=True, data=data)
+    if courseID:
+        if Enrollment.objects(user_id=user_id,courseID=courseID):
+            flash("You are already registered in this course","danger")
+            return redirect(url_for('courses'))
+        else:
+            Enrollment(user_id=user_id,courseID=courseID).save()
+            flash(f"You have been successfully enrolled in {courseTitle}!","success")
+
+    classes = list(User.objects.aggregate(*[
+            {
+                '$lookup': {
+                    'from': 'enrollment', 
+                    'localField': 'user_id', 
+                    'foreignField': 'user_id', 
+                    'as': 'r1'
+                }
+            }, {
+                '$unwind': {
+                    'path': '$r1', 
+                    'includeArrayIndex': 'r1_id', 
+                    'preserveNullAndEmptyArrays': False
+                }
+            }, {
+                '$lookup': {
+                    'from': 'course', 
+                    'localField': 'r1.courseID', 
+                    'foreignField': 'courseID', 
+                    'as': 'r2'
+                }
+            }, {
+                '$unwind': {
+                    'path': '$r2', 
+                    'preserveNullAndEmptyArrays': False
+                }
+            }, {
+                '$match': {
+                    'user_id': user_id
+                }
+            }, {
+                '$sort': {
+                    'courseID': 1
+                }
+            }
+        ]))
+
+    return render_template("enrollment.html", enrollment=True, title="Enrollments",classes=classes)
 
 @app.route("/api/")
 @app.route("/api/<idx>")
