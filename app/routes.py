@@ -1,6 +1,6 @@
 import flask
 from app import app,db
-from flask import json, render_template, request, Response, flash, redirect
+from flask import json, render_template, request, Response, flash, redirect, url_for
 from app.models import User, Course, Enrollment
 from app.forms import LoginForm, RegisterForm
 
@@ -16,8 +16,17 @@ def index():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        flash("You are logged in!","success")
-        return redirect('/index')
+
+        email = form.email.data
+        password = form.password.data
+
+        user = User.objects(email=email).first()
+
+        if user and user.get_password(password):
+            flash("You are logged in!","success")
+            return redirect('/index')
+        else:
+            flash("Sorry! Something went wrong","danger")
 
     return render_template("login.html", title="Login", form=form , login=True)
 
@@ -25,14 +34,29 @@ def login():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
+        
+        user_id = User.objects.count() + 1
+        email = form.email.data
+        first_name = form.first_name.data
+        last_name = form.last_name.data
+        password = form.password.data
+
+        user = User(user_id=user_id,email=email,first_name=first_name,last_name=last_name)
+        user.set_password(password)
+        user.save()
         flash("Registration succesful!","success")
-        return redirect('/login')
+        return redirect(url_for("index"))
+
     return render_template("register.html",title="Register", form=form ,register=True)
 
 @app.route("/courses/")
 @app.route("/courses/<term>")
-def courses(term="Spring 2019"):
-    return render_template("courses.html", courseData=courseData, courses=True, term=term)
+def courses(term = None):
+    if term == None:
+        term="Spring 2019"
+    
+    classes = Course.objects.order_by("courseID")
+    return render_template("courses.html", courseData=classes, courses=True, term=term)
 
 @app.route("/enrollment",methods=["GET","POST"])
 def enrollment():
@@ -60,8 +84,5 @@ def api(idx=None):
 
 @app.route('/user')
 def user():
-    # User(user_id=1, first_name="Issac", last_name="Newton", email="newton@uta.com", password="1234").save()
-    # User(user_id=2, first_name="Nikola", last_name="Tesla", email="tesla@uta.com", password="1234").save()
-
     users = User.objects.all()
     return render_template("user.html",users=users)
